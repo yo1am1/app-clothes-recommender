@@ -1,0 +1,6 @@
+user_id,age,gender,preferences
+101,28,F,"['Bras', 'Lace', 'Wacoal']"
+102,35,F,"['Panties', 'Calvin-Klein', 'Seamless']"
+103,22,F,"['Bras', 'Comfort', 'Underwire']"
+104,30,F,"['Panties', 'Wacoal', 'Lace']"
+105,40,F,"['Bras', 'Basic', 'Contour']"
