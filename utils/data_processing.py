@@ -1,6 +1,6 @@
 """This script loads and preprocesses raw data, including removing duplicates,
 null values, and downloading product images from Amazon. It supports a '--force'
-argument to replace existing data. It also ensures only unique URLs are downloaded."""
+argument to replace existing data and a '--cont' flag to continue from the last downloaded image."""
 import hashlib
 import os
 
@@ -43,6 +43,11 @@ def parse_args() -> argparse.Namespace:
         "--force",
         action="store_true",
         help="Force re-processing by replacing existing data",
+    )
+    parser.add_argument(
+        "--cont",
+        action="store_true",
+        help="Continue processing from the last downloaded image; do not remove old data.",
     )
     return parser.parse_args()
 
@@ -202,6 +207,7 @@ def extract_image_url(product_url: str) -> str | None:
         if response.status_code != 200:
             return None
 
+        from bs4 import BeautifulSoup
         soup = BeautifulSoup(response.content, "html.parser")
         img_tag = soup.find("img", {"id": "landingImage"})
         if not img_tag:
@@ -217,12 +223,24 @@ def download_images(df: pd.DataFrame) -> pd.DataFrame:
     """
     Downloads product images from their 'pdp_url' (if it's an Amazon link).
     Also ensures that if the same 'pdp_url' is encountered multiple times,
-    we only download once. Because we already did `drop_duplicates`,
-    there should only be one row per unique url anyway.
-    But we use a set to be extra safe.
+    we only download once.
+
+    Modification:
+      - Detects the highest existing image index in the images folder
+        and resumes from that row index.
     """
     logging.info("Starting image download process...")
     IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Determine the largest index from existing .jpeg files
+    max_existing_idx = -1
+    for img_file in IMAGE_DIR.glob("*.jpeg"):
+        try:
+            idx_str = img_file.stem
+            idx_int = int(idx_str)
+            max_existing_idx = max(max_existing_idx, idx_int)
+        except ValueError:
+            pass  # Skip files without a numeric stem
 
     # Create columns if not present
     if "image_path" not in df.columns:
@@ -230,17 +248,19 @@ def download_images(df: pd.DataFrame) -> pd.DataFrame:
     if "image_downloaded" not in df.columns:
         df["image_downloaded"] = False
 
-    seen_urls = set()  # track unique URLs to avoid repeated downloads
+    seen_urls = set()  # Track unique URLs to avoid repeated downloads
 
     for idx, row in tqdm(df.iterrows(), total=len(df), desc="Downloading images"):
+        # Skip rows that are <= max_existing_idx to resume from the last processed row
+        if idx <= max_existing_idx:
+            continue
+
         product_url = row["pdp_url"]
         if product_url in seen_urls:
-            # We've already handled this url, skip
             df.at[idx, "image_downloaded"] = False
             continue
         seen_urls.add(product_url)
 
-        # Only proceed if it's an Amazon link
         if "amazon" in product_url.lower():
             img_url = extract_image_url(product_url)
             if img_url:
@@ -256,7 +276,6 @@ def download_images(df: pd.DataFrame) -> pd.DataFrame:
             else:
                 df.at[idx, "image_downloaded"] = False
         else:
-            # Not an Amazon URL or not supported
             df.at[idx, "image_downloaded"] = False
 
     logging.info("Image downloading completed.")
@@ -275,7 +294,6 @@ def check_existing_data():
     so we don't repeat the process unnecessarily.
     """
     data_exists = PROCESSED_DATA_PATH.exists()
-    # Adjust to .jpeg or .jpg as needed:
     images_exist = any(IMAGE_DIR.glob("*.jpeg")) or any(IMAGE_DIR.glob("*.jpg"))
 
     if data_exists:
@@ -308,23 +326,26 @@ def delete_existing_data():
 def main():
     """
     Main function to execute the full data preprocessing pipeline:
-      1) Parse arguments for --force
-      2) Check existing data
-      3) If forced, remove old data
-      4) Load & clean data, remove duplicates
-      5) Download images from unique URLs
-      6) Save final CSV with image paths
+      1) Parse arguments for --force and --cont.
+      2) Check existing data.
+      3) If '--force' is used, remove old data.
+      4) If neither '--force' nor '--cont' is used and data exists, do nothing.
+      5) Otherwise, load & clean data, remove duplicates.
+      6) Download images from unique URLs (resuming from the last downloaded image).
+      7) Save final CSV with image paths.
+      8) Remove duplicate images.
+      9) Update CSV for any missing image files.
     """
     args = parse_args()
     data_exists, images_exist = check_existing_data()
 
-    if (data_exists or images_exist) and not args.force:
-        logging.info("Data already exists. Use '--force' to re-process.")
-        return
-
     if args.force:
         logging.info("Forcing re-processing: deleting existing data...")
         delete_existing_data()
+    elif not args.cont:
+        if data_exists or images_exist:
+            logging.info("Data already exists. Use '--force' to re-process or '--cont' to continue processing.")
+            return
 
     df = load_and_clean_data()
     if df.empty:
@@ -332,22 +353,14 @@ def main():
         return
 
     df = download_images(df)
-    # Optionally keep only successfully downloaded images:
-    # df = df[df["image_downloaded"] == True].copy()
     save_data(df)
 
-    input(
-        "This script will remove duplicate images in the directory. Press Enter to continue..."
-    )
+    input("This script will remove duplicate images in the directory. Press Enter to continue...")
 
-    # Remove duplicate images from the folder
     remove_duplicate_images(str(IMAGE_DIR))
-    # Now update the dataset to clear out image paths that no longer exist
     remove_path_from_dataset(str(PROCESSED_DATA_PATH), str(IMAGE_DIR))
 
-    logging.info(
-        "Data processing completed. Removed duplicates and updated dataset with valid image paths."
-    )
+    logging.info("Data processing completed. Removed duplicates and updated dataset with valid image paths.")
 
 
 if __name__ == "__main__":
