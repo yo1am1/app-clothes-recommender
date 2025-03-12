@@ -65,26 +65,26 @@ The system utilizes:
     pip install -r requirements.txt
     ```
 
-5. **Data preparation (Optional)**
-   #### I have included a sample dataset in the `data` folder. If you want to use your own data, you can replace data with your own.
-   If you want to rebuild ChromaDB, you can run the following command:
+4. **Data preparation (Optional)**
+   #### I have included a sample dataset in the `data` folder (`images.rar` archive). I recommend using data from that archive, but if you want to use your own data, you can replace the data with your own.
+   Run the following command to rebuild ChromaDB:
    ```bash
       python ./utils/data_processing.py --force
    ```
     
-This will load images from the internet and prepare the data for the vector store.
+   This will load images from the internet and prepare the data for the vector store.
+   
+   Then run `image_embeddings.py` with this command:
+      ```bash
+         python ./utils/embeddings/image_embeddings.py
+      ```
 
-Then run `image_embeddings.py` with tis command:
+5. **Run the application**:   
    ```bash
-      python ./utils/embeddings/image_embeddings.py
-   ```
-
-5.  **Run the application**:   
-   ```bash
-    streamlit run chatbot_streamlit.py
+      streamlit run chatbot_streamlit.py
    ```
    ```bash
-    fastapi run chatbot_fastapi.py
+      fastapi run chatbot_fastapi.py
    ```
 6. **FastAPI endpoint with user recommendations**:
-Go to `127.0.0.1:8000/docs` and try `/recommend` endpoint
+   Go to `127.0.0.1:8000/docs` and try `/recommend` endpoint
