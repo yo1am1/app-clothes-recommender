@@ -66,7 +66,7 @@ The system utilizes:
     ```
 
 4. **Data preparation (Optional)**
-   #### I have included a sample dataset in the `data` folder (utils/data_processing.py archive). I recommend using data from that archive, but if you want to use your own data, you can replace the data with your own.
+   #### I have included a sample dataset in the `data` folder (`data/images.7z` archive). I recommend using data from that archive, but if you want to use your own data, you can replace the data with your own.
    Run the following command to rebuild ChromaDB:
    ```bash
       python ./utils/data_processing.py --force
