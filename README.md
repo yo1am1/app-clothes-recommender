@@ -66,25 +66,32 @@ The system utilizes:
     ```
 
 4. **Data preparation (Optional)**
-   #### I have included a sample dataset in the `data` folder (`data/images.7z` archive). I recommend using data from that archive, but if you want to use your own data, you can replace the data with your own.
-   Run the following command to rebuild ChromaDB:
+   #### I have included a sample dataset in the `data` folder. If you want to use your own data, you can replace data with your own.
+   If you want to rebuild ChromaDB, you can run the following command:
    ```bash
       python ./utils/data_processing.py --force
    ```
+   If you want to resume processing from where it left off (i.e., continue downloading images without removing existing data), use the `--cont` flag:
     
    This will load images from the internet and prepare the data for the vector store.
-   
-   Then run `image_embeddings.py` with this command:
+   ```bash
+      python ./utils/data_processing.py --cont
+   ```
+   To validate that the images referenced in the CSV match the images in the folder—and update the CSV with the absolute image paths and download status—use the `--validate` flag:
+   ```bash
+      python ./utils/data_processing.py --validate
+   ```
+   Then run `image_embeddings.py` with tis command:
       ```bash
          python ./utils/embeddings/image_embeddings.py
       ```
 
-5. **Run the application**:   
+5.  **Run the application**:   
    ```bash
-      streamlit run chatbot_streamlit.py
+    streamlit run chatbot_streamlit.py
    ```
    ```bash
-      fastapi run chatbot_fastapi.py
+    fastapi run chatbot_fastapi.py
    ```
 6. **FastAPI endpoint with user recommendations**:
-   Go to `127.0.0.1:8000/docs` and try `/recommend` endpoint
+Go to `127.0.0.1:8000/docs` and try `/recommend` endpoint
