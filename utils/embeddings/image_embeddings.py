@@ -15,6 +15,7 @@ import pandas as pd
 # Initialize Chroma client and collection.
 DATA_DIR = pathlib.Path(__file__).parent.parent.parent / "data"
 chroma_client = chromadb.PersistentClient(path=str(DATA_DIR / "chroma"))
+
 embedding_function = OpenCLIPEmbeddingFunction()
 data_loader = ImageLoader()
 
@@ -29,17 +30,6 @@ def add_images_with_metadata(csv_path, images_folder):
     """
     Reads a CSV file containing product information and the corresponding image filename,
     then adds each image to the collection along with its metadata.
-
-    Expected CSV columns (adjust as needed):
-      - image_path (or image_file): filename of the downloaded image
-      - product_name
-      - price
-      - brand_name
-      - product_category
-      - description
-      - style_attributes
-      - available_size
-      - color
     """
     if not os.path.exists(csv_path):
         print(f"CSV file not found: {csv_path}")

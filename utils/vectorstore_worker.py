@@ -48,7 +48,7 @@ def load_images_from_ids(
 ):
     """
     Loads images from disk given a list of product IDs.
-    Assumes each image is stored as "<id>.jpg" in images_folder.
+    Assumes each image is stored as "<id>.jpeg" in images_folder.
     If captions_list is provided, uses those as captions.
     """
     images = []
@@ -56,7 +56,7 @@ def load_images_from_ids(
     loaded_hashes = set()
 
     for idx, image_id in enumerate(image_ids):
-        image_path = os.path.join(images_folder, f"{image_id}.jpg")
+        image_path = os.path.join(images_folder, f"{image_id}.jpeg")
 
         if os.path.exists(image_path):
             try:
