@@ -32,7 +32,7 @@ from utils.vectorstore_worker import (
 )
 from icecream import ic
 
-torch.classes.__path__ = [os.path.join(torch.__path__[0], torch.classes.__file__)] 
+torch.classes.__path__ = [os.path.join(torch.__path__[0], torch.classes.__file__)]
 
 DATA_DIR = pathlib.Path(__file__).parent / "data"
 USER_PROFILES_PATH = DATA_DIR / "user_profiles.csv"
