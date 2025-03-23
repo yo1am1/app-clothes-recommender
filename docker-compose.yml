@@ -1,0 +1,29 @@
+version: "3.8"
+
+services:
+  streamlit:
+    build: .
+    container_name: clothes_recommender_streamlit
+    command: streamlit run chatbot_streamlit.py --server.enableCORS false --server.port 8501
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
+      - chromadb_data:/app/data/chroma
+    env_file:
+      - .env
+
+  fastapi:
+    build: .
+    container_name: clothes_recommender_fastapi
+    command: python chatbot_fastapi.py --host 0.0.0.0 --port 8502
+    ports:
+      - "8502:8502"
+    volumes:
+      - .:/app
+      - chromadb_data:/app/data/chroma
+    env_file:
+      - .env
+
+volumes:
+  chromadb_data:

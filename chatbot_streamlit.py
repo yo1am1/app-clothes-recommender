@@ -1,4 +1,7 @@
+import os
+import torch
 import streamlit as st
+
 import pathlib
 import numpy as np
 import pandas as pd
@@ -28,6 +31,8 @@ from utils.vectorstore_worker import (
     search_similar_images,
 )
 from icecream import ic
+
+torch.classes.__path__ = [os.path.join(torch.__path__[0], torch.classes.__file__)] 
 
 DATA_DIR = pathlib.Path(__file__).parent / "data"
 USER_PROFILES_PATH = DATA_DIR / "user_profiles.csv"
@@ -231,6 +236,7 @@ def init_page() -> None:
         )
 
         query = st.text_input("Enter your search query", value="black bra")
+
         if st.button("Search by Text"):
             with st.spinner("Searching..."):
                 result = search_similar_images(
@@ -251,9 +257,11 @@ def init_page() -> None:
 
                 captions = [format_metadata(meta) for meta in top_metas]
                 st.write("Found image IDs:", top_ids)
+
                 images, loaded_captions = load_images_from_ids(
                     top_ids, str(IMAGES_FOLDER), captions_list=captions
                 )
+
                 if images:
                     st.image(images, caption=loaded_captions, width=200)
                 else:
@@ -384,66 +392,71 @@ def init_page() -> None:
             size, price). Simply enter your query in the field below.
             """
         )
+
         chat_model = __get_openai_model()
-
-        document_content_description = "Brief summary of the product on Amazon."
-        prompt = get_query_constructor_prompt(
-            document_content_description,
-            metadata_field_info,
-        )
-        output_parser = StructuredQueryOutputParser.from_components()
-        query_constructor = prompt | chat_model | output_parser
-        msg_chain = init_message.model_copy() | chat_model | StrOutputParser()
-
-        with st.container():
-            if st.session_state["messages"]:
-                for messages in st.session_state["messages"]:
-                    if messages["role"] == "ai":
-                        with st.chat_message(name="assistant"):
-                            st.write(messages["content"])
-                    elif messages["role"] == "user":
-                        with st.chat_message(name="human"):
-                            st.write(messages["content"])
-
-        user_input = st.chat_input(
-            "Talk to Clothy...", key="chat_input", on_submit=__add_message
-        )
-
-        if user_input:
-            structured_query = query_constructor.invoke({"query": user_input})
-            ic(structured_query.filter)
-
-            metadata_filter = __build_metadata_filter(structured_query.filter)
-            if not metadata_filter:
-                metadata_filter = None  # Pass None if filter is empty.
-
-            ic(metadata_filter)
-            ic(structured_query.query)
-
-            filtered_context = multimodal_db.query(
-                query_texts=[user_input],
-                n_results=5,
-                include=["distances", "metadatas"],
-                where=metadata_filter,
+        if chat_model is None:
+            st.warning("Chatbot is not available due to missing configuration.")
+        else:
+            document_content_description = "Brief summary of the product on Amazon."
+            prompt = get_query_constructor_prompt(
+                document_content_description,
+                metadata_field_info,
             )
-            ic(filtered_context)
+            output_parser = StructuredQueryOutputParser.from_components()
+            query_constructor = prompt | chat_model | output_parser
+            msg_chain = init_message.model_copy() | chat_model | StrOutputParser()
 
-            with st.chat_message(name="assistant"), st.spinner("Thinking..."):
-                model_response = st.write_stream(
-                    __get_response(
-                        chain=msg_chain,
-                        user_input=user_input,
-                        context_str=filtered_context
-                        if filtered_context is not None
-                        else "No context found.",
-                        history_str=st.session_state["messages"],
+            with st.container():
+                if st.session_state["messages"]:
+                    for messages in st.session_state["messages"]:
+                        if messages["role"] == "ai":
+                            with st.chat_message(name="assistant"):
+                                st.write(messages["content"])
+                        elif messages["role"] == "user":
+                            with st.chat_message(name="human"):
+                                st.write(messages["content"])
+
+            user_input = st.chat_input(
+                "Talk to Clothy...", key="chat_input", on_submit=__add_message
+            )
+
+            if user_input:
+                structured_query = query_constructor.invoke({"query": user_input})
+                ic(structured_query.filter)
+
+                metadata_filter = __build_metadata_filter(structured_query.filter)
+                if not metadata_filter:
+                    metadata_filter = None  # Pass None if filter is empty.
+
+                ic(metadata_filter)
+                ic(structured_query.query)
+
+                filtered_context = multimodal_db.query(
+                    query_texts=[user_input],
+                    n_results=5,
+                    include=["distances", "metadatas"],
+                    where=metadata_filter,
+                )
+                ic(filtered_context)
+
+                with st.chat_message(name="assistant"), st.spinner("Thinking..."):
+                    model_response = st.write_stream(
+                        __get_response(
+                            chain=msg_chain,
+                            user_input=user_input,
+                            context_str=(
+                                filtered_context
+                                if filtered_context is not None
+                                else "No context found."
+                            ),
+                            history_str=st.session_state["messages"],
+                        )
                     )
-                )
-            if model_response:
-                st.session_state.messages.append(
-                    {"role": "ai", "content": model_response}
-                )
-            st.json(st.session_state)
+                if model_response:
+                    st.session_state.messages.append(
+                        {"role": "ai", "content": model_response}
+                    )
+                st.json(st.session_state)
 
 
 if __name__ == "__main__":

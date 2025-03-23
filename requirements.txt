@@ -14,3 +14,5 @@ fastapi~=0.115.11
 pydantic~=2.10.6
 langchain-openai~=0.3.8
 langchain~=0.3.20
+open-clip-torch~=2.31.0
+lark~=1.2.2
